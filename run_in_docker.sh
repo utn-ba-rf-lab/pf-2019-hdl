@@ -22,7 +22,3 @@ docker run -it --rm \
            --group-add=sudo \
            icestorm \
            ${@:-/bin/bash}
-
-
-
-

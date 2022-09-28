@@ -1,11 +1,28 @@
-FROM debian:stretch
+FROM ubuntu:20.04
+
+# https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+ENV TZ=America/Argentina/Buenos_Aires
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # dependencies for lattice toolchain
 RUN mkdir /build && apt-get update && \
 	apt-get install -y build-essential clang clang-format bison flex \
 	libreadline-dev gawk tcl-dev libffi-dev git mercurial graphviz \
 	xdot pkg-config python python3 libftdi-dev \
-	qt5-default python3-dev libboost-all-dev cmake
+	qt5-default python3-dev libboost-all-dev cmake wget
+
+# install npm
+ENV NODE_VERSION=16.13.0  
+RUN apt install -y curl && \
+ 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+ENV NVM_DIR=/root/.nvm 
+RUN	. "$NVM_DIR/nvm.sh" && nvm install ${NODE_VERSION} && \
+	. "$NVM_DIR/nvm.sh" && nvm use v${NODE_VERSION} && \
+	. "$NVM_DIR/nvm.sh" && nvm alias default v${NODE_VERSION} 
+ENV PATH="/root/.nvm/versions/node/v${NODE_VERSION}/bin/:${PATH}"
+
+# install netlistsvg using npm
+RUN npm install -g netlistsvg
 
 # lattice toolchain
 RUN git clone https://github.com/cliffordwolf/icestorm.git /build/icestorm
@@ -22,23 +39,3 @@ RUN cd /build/nextpnr && cmake -DARCH=ice40 . && make -j$(nproc) && make install
 RUN cd /build/arachne-pnr && make -j$(nproc) && make install
 RUN cd /build/yosis && make -j$(nproc) && make install
 RUN rm -rf /build/
-
-# gnuradio installation
-RUN apt install -y gnuradio
-RUN apt install -y gr-osmosdr
-
-# mercurial grc module dependencies
-RUN apt update && apt-get install -y --no-install-recommends \
-    python-pip && apt clean
-RUN pip2 install pyserial numpy
-
-# Mercurial module instalation
-ARG REBUILD
-#RUN echo ${REBUILD} && git clone https://github.com/sdr-tx/gnuradio-module module && \
-RUN mkdir module
-COPY docker/gnuradio-module module
-RUN cd module && rm -rf build && mkdir build && cd build && cmake .. && make install
-
-
-
-
