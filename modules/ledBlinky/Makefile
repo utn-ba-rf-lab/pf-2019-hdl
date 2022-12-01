@@ -18,7 +18,8 @@ else
 	PCF = mercurial.pcf
 endif
 
-all: syn pnr pack
+#all: syn pnr pack
+all: syn pnr
 
 show:
 	@echo "${RED}source files: ${RESET}" $(SRC)
