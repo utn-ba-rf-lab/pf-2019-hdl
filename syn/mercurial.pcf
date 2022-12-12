@@ -1,0 +1,66 @@
+# ########################################
+# # basics
+# ########################################
+#set_io piClk               21
+#set_io piRst              144
+# 
+# 
+# ########################################
+# # FTDI interface
+# ########################################
+# set_io in_out_245[0]    62
+# set_io in_out_245[1]    61
+# set_io in_out_245[2]    60
+# set_io in_out_245[3]    56
+# set_io in_out_245[4]    55
+# set_io in_out_245[5]    48
+# set_io in_out_245[6]    47
+# set_io in_out_245[7]    45
+# 
+# set_io rxf_245          43
+# set_io rx_245           41
+# set_io txe_245          42
+# set_io wr_245           39
+# 
+# 
+# ########################################
+# # Leds keep alive
+# ########################################
+#set_io poLed              121
+# set_io leds[1]          122
+# set_io leds[2]          124
+# set_io leds[3]          125
+# set_io leds[4]          130
+# set_io leds[5]          134
+# set_io leds[6]          135
+# set_io leds[7]          136
+# 
+# 
+# ########################################
+# # pwm outputs
+# ########################################
+# set_io pwm_diff_p       82
+# set_io pwm_diff_n       83
+# set_io pwm_pin          95
+# 
+# 
+# ########################################
+# # spi outputs
+# ########################################
+# set_io sdata            76
+# set_io bclk             74
+# set_io nsync            79
+# 
+# 
+# ########################################
+# # --- test ---
+# ########################################
+# set_io symb_clk         7
+# set_io fifo_empty       9
+# 
+# set_io fake_pwm         28
+# set_io fake_sdata       25
+# set_io fake_bclk        29
+# set_io fake_nsync       26
+
+
