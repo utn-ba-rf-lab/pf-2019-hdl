@@ -1,0 +1,48 @@
+set_io hwclk            J3
+set_io rst              A10
+
+set_io pwm_diff_p       T13
+set_io pwm_diff_n       T14
+set_io pwm_pin          T15
+
+set_io nsync            B1
+set_io bclk             D1
+set_io pwm              R15
+set_io symb_clk         T16
+set_io fifo_empty       C1
+#set_io read             B1
+#set_io fifo_empty       C1
+#set_io fifo_full        D1
+
+# FTDI interface
+set_io RS232_Rx_TTL     B10
+set_io RS232_Tx_TTL     B12
+set_io RTSn             B13
+set_io CTSn             A15
+set_io DTRn             A16
+#set_io in_out_245[5]    B14
+#set_io in_out_245[6]    B15
+#set_io in_out_245[7]    G15
+
+set_io rxf_245          F15
+set_io rx_245           D15
+set_io txe_245          E14
+set_io wr_245           D14
+
+# Leds keep alive
+set_io leds[0]          B5
+set_io leds[1]          B4
+set_io leds[2]          A2
+set_io leds[3]          A1
+set_io leds[4]          C5
+set_io leds[5]          C4
+set_io leds[6]          B3
+set_io leds[7]          C3
+
+# --- test ---
+set_io fake_rst         N16
+set_io test_baudrate    F14
+set_io tc_pwm_step      F2
+set_io tc_pwm_symb      G2
+
+
