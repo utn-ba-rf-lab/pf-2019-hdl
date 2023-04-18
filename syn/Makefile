@@ -16,9 +16,9 @@ HW:= mercurial
 
 # SRC := $(wildcard ../modules/blinky/*.v)
 
-SRC := $(wildcard ../top/fifo-test.v)
+# SRC := $(wildcard ../top/fifo-test.v)
 # SRC := $(wildcard ../top/rx-8000.v)
-# SRC := $(wildcard ../top/serializer.v)
+SRC := $(wildcard ../top/serializer.v)
 INC := ../inc/
 BUILD = ../build
 

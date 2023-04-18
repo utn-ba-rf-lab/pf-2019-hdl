@@ -18,7 +18,7 @@ Significado de los leds
 */
 
 /* module */
-module rx_8000 (
+module top_module (
     /* I/O */
     input hwclk,
     inout [7:0] in_out_245,
