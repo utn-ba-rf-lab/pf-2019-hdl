@@ -116,7 +116,7 @@ estado = 10 Detector con WatchDog
                 // Si estoy en estado 2 y recibo "N", paso a estado 3
                 4'd2 : estado = (dato_rx == 8'd78) ? 4'd3 : 4'd0;
     	  endcase
-    	  leds[1] <= ~leds[1];
+    	  if (estado != 4'd10) leds[1] <= ~leds[1];
         end
         else if (haydato && !transmitiendo) begin
             case (estado)
@@ -158,7 +158,7 @@ estado = 10 Detector con WatchDog
             if (a1 != a2) begin
                 samp_rate_error <= (c1 != 12'd0) ? 1'b1 : 1'b0;
                 c1 = 12'd2000;
-                //leds[1] <= ~leds[1]; *** esto no anda; NO HACE TOGGLE CUANDO ESTOY EN RÉGIMEN
+                leds[1] <= ~leds[1];
                 a2 <= a1;
             end
             end
