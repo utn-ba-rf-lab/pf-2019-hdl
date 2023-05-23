@@ -28,23 +28,41 @@ module top_module (
     output rx_245,
     output wr_245,
     output [7:0] leds,
-    output pin_8K);
+    output pin_8K,
+    output sdata,
+    output bclk,
+    output nsync);
 
-    /* Counter register */
-    /* hwclk: 12MHz -> max counter 12e6 */
-    reg [25:0] counter = 26'b0;
+    localparam PAM_CLKS_PER_BCLK = 12;
+    localparam PAM_DATA_LENGHT = 24;
+    
+    // Estados para el DAC
+    localparam ST_IDLE = 0;
+    localparam ST_RUNNING = 1;
+    localparam ST_BYTE_LOW = 2; 
+    localparam ST_BYTE_HIGH = 3;
+    
+    localparam WIDTH_COUNT_BCLK = $clog2(PAM_CLKS_PER_BCLK);
+    localparam WIDTH_COUNT_BITS = $clog2(PAM_DATA_LENGHT);
+    
+    reg [25:0] counter = 26'b0;     // Counter register - hwclk: 12MHz -> max counter 12e6
     reg [10:0] counter_8K = 11'b0;
     reg [7:0] dato,dato_tx,dato_rx = 8'b0;
     reg haydato,transmitiendo,reset,llego_dato = 1'b0;
     reg dato_leido = 1'b1;
-    reg oe = 1'b0;              // Output Enable
-    reg tiempo = 1'b0;          // Pasa a uno cada 1/8000 Sg.
-    reg [3:0] estado = 4'b0;    // estado indica en que estado está la placa
-    reg a1 = 1'b0;              // Toggle cada medio segundo
-    reg a2 = 1'b0;              // Almacena el estado anterior de a1 en el always que evalúa estado del FTDI
-    reg [11:0] c1 = 12'd2000;   // Desciende por cada carácter recibido
-    reg samp_rate_error = 1'b0; // Va a uno si no se cumple con la tasa de muestras
-    reg [1:0] c2 = 2'd3;        // Contador de tiempo (igual a c2*0.5 Sg) para activar el WatchDog
+    reg oe = 1'b0;                              // Output Enable
+    reg tiempo = 1'b0;                          // Pasa a uno cada 1/8000 Sg.
+    reg [3:0] estado = 4'b0;                    // estado indica en que estado está la placa
+    reg a1 = 1'b0;                              // Toggle cada medio segundo
+    reg a2 = 1'b0;                              // Almacena el estado anterior de a1 en el always que evalúa estado del FTDI
+    reg [11:0] c1 = 12'd2000;                   // Desciende por cada carácter recibido
+    reg samp_rate_error = 1'b0;                 // Va a uno si no se cumple con la tasa de muestras
+    reg [1:0] c2 = 2'd3;                        // Contador de tiempo (igual a c2*0.5 Sg) para activar el WatchDog
+    reg [1:0] estado_dac = ST_IDLE;             // Estado del DAC
+    reg [23:0] sample_reg = 24'd0;              // Registro para enviar dato al DAC
+    reg [WIDTH_COUNT_BCLK-1:0] counter_bclk;    // Contador de decimación para el clock del DAC
+    reg [WIDTH_COUNT_BITS-1:0] counter_bits;    // Contador de bits enviados al DAC por muestra
+    reg [15:0] falso_dato = 16'd0;              // Sólo para probar el DAC    
 
 /*
 estado = 0 Inicio, espera "U"
@@ -62,7 +80,7 @@ estado = 10 Detector con WatchDog
     
     assign in_out_245 = oe ? dato_tx : 8'bZ;
     assign pin_8K = tiempo;
-
+    assign sdata = sample_reg[23];
 
     /* always */
     always @ (posedge hwclk) begin
@@ -261,6 +279,66 @@ estado = 10 Detector con WatchDog
             wr_245 <= 1'b1;         // Cierro transmisión
             transmitiendo <= 1'b0;  // Bajo flag de en transmisión
             oe = 1'b0;              // Aseguro lectura del bus
+        end
+    end
+    
+    // Control de DAC
+    always @ (posedge hwclk) begin
+        if (reset) begin
+            estado_dac <= ST_IDLE;
+            sample_reg <= 24'd0;
+            counter_bits <= 0;
+            nsync <= 1'b1;
+            falso_dato <= 16'd0; // Sólo para probar el DAC
+        end
+        else if (estado == 4'd10) begin
+            case (state)
+                ST_IDLE:
+                begin
+                    sample_reg <= 24'd0;
+                    nsync <= 1'b1;
+                    counter_bits <= 0;
+                    falso_dato <= 16'd0; // Sólo para probar el DAC
+                    estado_dac <= ST_BYTE_LOW;
+                end
+                
+                ST_BYTE_LOW:
+                begin
+                    if (1'b1) begin // llego_dato == 1'b1
+                        sample_reg[7:0] <= falso_dato[7:0];
+                        estado_dac <= ST_BYTE_HIGH;
+                    end
+                end
+                
+                ST_BYTE_HIGH:
+                begin
+                    if (1'b1) begin // llego_dato == 1'b1
+                        sample_reg[15:8] <= falso_dato[15:8];
+                        estado_dac <= ST_RUNNING;
+                    end
+                end
+                
+                ST_RUNNING:
+                begin
+                    nsync <= 1'b0;
+                    if ((counter_bits == PAM_DATA_LENGHT-1) && (counter_bclk == PAM_CLKS_PER_BCLK-1)) begin
+                        // Llegó al final del envio de una muestra
+                        falso_dato <= falso_dato + 512;
+                        estado_dac <= ST_IDLE;
+                    end
+                end
+                
+                default:
+                begin
+                    estado_dac <= ST_IDLE;
+                end
+            endcase
+        end
+        else begin
+            estado_dac <= ST_IDLE;
+            sample_reg <= 24'd0;
+            nsync <= 1'b1;
+            falso_dato <= 16'd0; // Sólo para probar el DAC
         end
     end
     

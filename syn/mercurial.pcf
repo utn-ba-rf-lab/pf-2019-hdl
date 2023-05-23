@@ -39,9 +39,9 @@ set_io leds[7]          136
 ########################################
 # pwm outputs
 ########################################
-set_io pwm_diff_p       82
-set_io pwm_diff_n       83
-set_io pwm_pin          95
+# set_io pwm_diff_p       82
+# set_io pwm_diff_n       83
+# set_io pwm_pin          95
 
 
 ########################################
@@ -55,13 +55,13 @@ set_io nsync            79
 ########################################
 # --- test ---
 ########################################
-set_io symb_clk         7
-set_io fifo_empty       9
+# set_io symb_clk         7
+# set_io fifo_empty       9
 
-set_io fake_pwm         28
-set_io fake_sdata       25
+# set_io fake_pwm         28
+# set_io fake_sdata       25
 # set_io fake_bclk        29
 set_io pin_8K        29
-set_io fake_nsync       26
+# set_io fake_nsync       26
 
 
