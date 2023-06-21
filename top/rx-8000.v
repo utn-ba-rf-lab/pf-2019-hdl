@@ -15,7 +15,7 @@ Significado de los leds
 */
 
 /* module */
-module rx_8000 (
+module top_module (
     /* I/O */
     input hwclk,
     inout [7:0] in_out_245,
@@ -24,7 +24,7 @@ module rx_8000 (
     output rx_245,
     output wr_245,
     output [7:0] leds,
-    output pin_8K);
+    output pin_L23B);
 
     /* Counter register */
     /* hwclk: 12MHz -> max counter 12e6 */
@@ -37,7 +37,7 @@ module rx_8000 (
     
     assign in_out_245 = oe ? dato_tx : 8'bZ;
     //assign leds[5] = eco;
-    assign pin_8K = tiempo;
+    assign pin_L23B = tiempo;
 
     /* always */
     always @ (posedge hwclk) begin

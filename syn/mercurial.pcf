@@ -61,7 +61,8 @@ set_io nsync            79
 # set_io fake_pwm         28
 # set_io fake_sdata       25
 # set_io fake_bclk        29
-set_io pin_8K        29
+set_io pin_L23B           29
+set_io pin_L4B            8
 # set_io fake_nsync       26
 
 

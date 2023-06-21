@@ -20,20 +20,21 @@ Significado de los leds
 /* module */
 module top_module (
     /* I/O */
-    input hwclk,
-    input reset_btn,
-    inout [7:0] in_out_245,
+    input hwclk,                /*Clock*/
+    input reset_btn,            /*Botón de reset*/
+    inout [7:0] in_out_245,     /*Bus de datos con el FTDI*/
     input txe_245,
     input rxf_245,
     output rx_245,
     output wr_245,
     output [7:0] leds,
-    output pin_8K,
+    output pin_L23B,
+    output pin_L4B,
     output sdata,
     output bclk,
-    output nsync);
+    output nsync);              /*SYNC del AD5061*/
 
-    localparam PAM_CLKS_PER_BCLK = 12;
+    localparam PAM_CLKS_PER_BCLK = 4;
     localparam PAM_DATA_LENGHT = 24;
     
     // Estados para el DAC
@@ -62,7 +63,10 @@ module top_module (
     reg [23:0] sample_reg = 24'd0;              // Registro para enviar dato al DAC
     reg [WIDTH_COUNT_BCLK-1:0] counter_bclk;    // Contador de decimación para el clock del DAC
     reg [WIDTH_COUNT_BITS-1:0] counter_bits;    // Contador de bits enviados al DAC por muestra
-    reg [15:0] falso_dato = 16'd0;              // Sólo para probar el DAC    
+    reg [15:0] muestra = 16'd0;                 // El valor que va al DAC
+    reg muestra_lista = 1'b0;                   // Vale uno para ordenar al DAC que lea muestra
+    reg dac_idle = 1'b1;                        // Vale uno si el DAC puede iniciar conversión
+    reg byte_low = 1'b1;                        // Se levanta cuando lee un byte
 
 /*
 estado = 0 Inicio, espera "U"
@@ -79,7 +83,8 @@ estado = 10 Detector con WatchDog
 */
     
     assign in_out_245 = oe ? dato_tx : 8'bZ;
-    assign pin_8K = tiempo;
+    assign pin_L23B = dac_idle; // antes tiempo, bclk, llego_dato, dac_idle, nsync
+    assign pin_L4B = llego_dato; // antes nsync
     assign sdata = sample_reg[23];
 
     /* always */
@@ -189,11 +194,17 @@ estado = 10 Detector con WatchDog
 
     // Lógica de serializer
     always @ (posedge hwclk) begin
+        muestra <= muestra;    
+        muestra_lista <= muestra_lista;
+        byte_low <= byte_low;
+        leds[7] <= (estado_dac == ST_RUNNING) ? 1'b1 : 1'b0;
         if (estado == 4'd0) begin
             leds[5] <= 1;
-            leds[7] <= 0;
             leds[6] <= 0;
             haydato <= 1'b0;
+            byte_low <= 1'b1;
+            muestra <= 16'd0;
+            muestra_lista <= 1'b0;
         end
         else if (estado == 4'd3) begin
             dato = 8'd85;
@@ -224,31 +235,27 @@ estado = 10 Detector con WatchDog
 	end
         else if (estado == 4'd10) begin
             leds[5] <= 0;
-            case (dato_rx)
-                // Si recibo "H" prendo led leds[7]
-                8'd72 : begin // Si recibo "H" prendo led leds[7]
-                leds[7] <= 1;
-                leds[6] <= 0;
-                end 
-                // Si recibo "L" prendo led leds[6]
-                8'd76 : begin // Si recibo "L" prendo led leds[6]
-                leds[7] <= 0;
-                leds[6] <= 1;
-                end 
-                // Si recibo otro apago leds 6 y 7 
-                default : begin 
-                leds[7] <= 0;
-                leds[6] <= 0;
-                end 
-            endcase
+            if (llego_dato && byte_low) begin
+                muestra[7:0] = dato_rx;            
+                byte_low <= 1'b0;
+            end
+            else if(llego_dato && !byte_low) begin
+                muestra[15:8] = dato_rx;
+                byte_low <= 1'b1;
+                if (dac_idle) begin
+                    muestra_lista <= 1'b1;
+                end
+            end
+            else if (muestra_lista && !dac_idle) begin
+                muestra_lista <= 1'b0;
+            end
         end
     end
 
     // Evalua estado del FTDI
     always @ (posedge hwclk) begin
         counter_8K = tiempo ? counter_8K : counter_8K + 1;
-        if ( counter_8K == 11'd1500 )
-        begin
+        if ( counter_8K == 11'd750 ) begin
             counter_8K <= 11'd0;
             tiempo <= 1'b1;
         end
@@ -284,46 +291,51 @@ estado = 10 Detector con WatchDog
     
     // Control de DAC
     always @ (posedge hwclk) begin
+        nsync <= nsync;
+        estado_dac <= estado_dac;
+        sample_reg <= sample_reg;
+        counter_bits <= counter_bits;
         if (reset) begin
             estado_dac <= ST_IDLE;
+            dac_idle <= 1'b1;
             sample_reg <= 24'd0;
             counter_bits <= 0;
             nsync <= 1'b1;
-            falso_dato <= 16'd0; // Sólo para probar el DAC
         end
         else if (estado == 4'd10) begin
-            case (state)
+            case (estado_dac)
                 ST_IDLE:
                 begin
                     sample_reg <= 24'd0;
                     nsync <= 1'b1;
                     counter_bits <= 0;
-                    falso_dato <= 16'd0; // Sólo para probar el DAC
-                    estado_dac <= ST_BYTE_LOW;
-                end
-                
-                ST_BYTE_LOW:
-                begin
-                    if (1'b1) begin // llego_dato == 1'b1
-                        sample_reg[7:0] <= falso_dato[7:0];
-                        estado_dac <= ST_BYTE_HIGH;
-                    end
-                end
-                
-                ST_BYTE_HIGH:
-                begin
-                    if (1'b1) begin // llego_dato == 1'b1
-                        sample_reg[15:8] <= falso_dato[15:8];
+                    counter_bclk <= 0;
+                    if (muestra_lista) begin
+                        sample_reg[15:0] <= muestra[15:0];
                         estado_dac <= ST_RUNNING;
+                        dac_idle <= 1'b0;
                     end
                 end
                 
                 ST_RUNNING:
                 begin
                     nsync <= 1'b0;
+                    
+                    if (counter_bclk == PAM_CLKS_PER_BCLK/2) begin
+                        bclk <= 0;
+                        counter_bclk <= counter_bclk + 1;
+                    end else if (counter_bclk == PAM_CLKS_PER_BCLK-1) begin
+                        bclk <= 1;
+                        sample_reg <= sample_reg << 1;
+                        counter_bits <= counter_bits + 1;
+                        counter_bclk <= 0;
+                    end else begin
+                        counter_bclk <= counter_bclk + 1;
+                    end
+                                        
                     if ((counter_bits == PAM_DATA_LENGHT-1) && (counter_bclk == PAM_CLKS_PER_BCLK-1)) begin
                         // Llegó al final del envio de una muestra
-                        falso_dato <= falso_dato + 512;
+                        dac_idle <= 1'b1;
                         estado_dac <= ST_IDLE;
                     end
                 end
@@ -338,7 +350,6 @@ estado = 10 Detector con WatchDog
             estado_dac <= ST_IDLE;
             sample_reg <= 24'd0;
             nsync <= 1'b1;
-            falso_dato <= 16'd0; // Sólo para probar el DAC
         end
     end
     
