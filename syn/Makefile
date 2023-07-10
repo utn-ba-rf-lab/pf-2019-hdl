@@ -10,7 +10,7 @@ PLL := 120
 HW:= mercurial
 # HW:= bk
 
-# SRC := $(wildcard ../modules/modulator_$(MOD)/*.v)
+SRC := $(wildcard ../modules/*.v)
 # SRC += $(wildcard ../modules/pll/pll_$(PLL)MHz.v)
 # SRC += $(filter-out $(wildcard ../modules/modulator_*/*.v) $(wildcard ../modules/pll/*.v), $(wildcard ../modules/**/*.v ../top/$(TOP).v) )
 
@@ -18,7 +18,7 @@ HW:= mercurial
 
 # SRC := $(wildcard ../top/fifo-test.v)
 # SRC := $(wildcard ../top/rx-8000.v)
-SRC := $(wildcard ../top/serializer.v)
+SRC += $(wildcard ../top/serializer.v)
 INC := ../inc/
 BUILD = ../build
 
