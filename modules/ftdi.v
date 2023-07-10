@@ -14,11 +14,8 @@ module ftdi(
 
     input [7:0] tx_data,        // Dato a transmitir a la PC desde Mercurial
     input   tx_rq,              // Alto para indicar que hay un dato desde Mercurial a transmitir
-    output  tx_st,              // Flanco positivo cuando el dato fue leído por este módulo
+    output  tx_st               // Flanco positivo cuando el dato fue leído por este módulo
     
-    output  test1,
-    output  test2,
-    output  test3,
     );
 
     reg [2:0] estado_ftdi_rx = 3'd0;
@@ -104,11 +101,9 @@ module ftdi(
         else if (estado_ftdi_tx == 3'd3) begin
             wr_245 <= 1'b1;
             tx_st <= 1'b0;
-            test1 <= 1'b1;
             estado_ftdi_tx <= 3'd4;
         end
         else if (estado_ftdi_tx == 3'd4 && !tx_rq_reg) begin
-            test2 <= 1'b1;
             estado_ftdi_tx <= 3'd0;
         end
 
@@ -132,78 +127,3 @@ module ftdi(
     end    
 
 endmodule
-
-        //else if (tx_rq_reg && !txe_245_reg && !oe && estado_ftdi_rx == 3'd0 && estado_ftdi_tx == 3'd0) begin
-            //oe = 1'b1;              // Aseguro escritura del bus
-            //estado_ftdi_tx <= 3'd1;
-            //test3 <= ~test3;
-        //end
-        //else if (estado_ftdi_tx == 3'd1) begin
-            //tx_data_in <= tx_data;
-            //tx_st <= 1'b1;
-            //estado_ftdi_tx <= 3'd2;
-        //end
-        //else if (estado_ftdi_tx == 3'd2) begin
-            //wr_245 <= 1'b0;
-            //estado_ftdi_tx <= 3'd3;
-        //end
-        //else if (estado_ftdi_tx == 3'd3) begin
-            //wr_245 <= 1'b1;
-            //tx_st <= 1'b0;
-            //estado_ftdi_tx <= 3'd4;
-        //end
-        //else if (estado_ftdi_tx == 3'd4 && !tx_rq_reg) begin
-            //estado_ftdi_tx <= 3'd0;
-        //end
-
-
-
-
-
-
-
-
-
-
-
-    //// Evalua estado del FTDI
-    //always @ (posedge hwclk) begin
-        //counter_8K = tiempo ? counter_8K : counter_8K + 1;
-        //if ( counter_8K == 11'd750 ) begin
-            //counter_8K <= 11'd0;
-            //tiempo <= 1'b1;
-        //end
-        
-        //if (rxf_245 == 1'b0 && rx_245 == 1'b1 && !haydato && !transmitiendo && tiempo && dato_leido) begin
-            //oe = 1'b0;              // Aseguro lectura del bus
-            //rx_245 <= 1'b0;         // Solicito el dato al FTDI
-            //wr_245 <= 1'b1;
-        //end
-        //else if (rxf_245 == 1'b0 && rx_245 == 1'b0 && !haydato && !transmitiendo && tiempo) begin
-            //dato_rx = in_out_245;       // Leo el dato (Bloqueante)
-            //llego_dato <= 1'b1;         // Aviso que hay dato recibido en dato_rx
-            //rx_245 <= 1'b1;
-            //tiempo <= 1'b0;
-        //end
-
-        
-        //else if (dato_leido && llego_dato) begin
-            //llego_dato <= 1'b0;         // El dato recibido ya fue leido
-        //end
-        
-        
-        //else if (txe_245 == 1'b0 && haydato && !transmitiendo) begin
-            //oe = 1'b1;              // Aseguro escritura del bus
-            //dato_tx = dato;
-            //transmitiendo <= 1'b1;  // Flag de en transmisión
-        //end
-        //else if (transmitiendo && wr_245) begin
-            //wr_245 <= 1'b0;         // Solicito transmisión al FTDI
-        //end
-        //else if (transmitiendo&& !wr_245) begin
-            //wr_245 <= 1'b1;         // Cierro transmisión
-            //transmitiendo <= 1'b0;  // Bajo flag de en transmisión
-            //oe = 1'b0;              // Aseguro lectura del bus
-        //end
-    //end
-    

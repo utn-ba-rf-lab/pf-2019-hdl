@@ -14,8 +14,7 @@ Significado de los leds
 4 - Sin asignar
 5 - Sin asignar
 6 - Sin asignar
-7 - Apaga si está en estado operativo (recibió "UTN", envió UTNv1 entró en régimen) [Próximamente]
- 
+7 - Apaga si está en estado operativo (recibió "UTN", envió UTNv1 entró en régimen)
 */
 
 module top_module (
@@ -36,37 +35,43 @@ module top_module (
     );  
 
     /***************************************************************************
-     * signals
-     ***************************************************************************
-     */
+    * signals
+    ****************************************************************************/
+
     reg clk;
-    reg [7:0] led_reg;
-    reg [3:0] estado = 4'b0;                    // estado indica en que estado está la placa
+    reg [3:0] estado = 4'b0;                      // estado indica en que estado está la placa
     reg rxf_245_reg;
     reg [7:0] dato_rx, dato_rx_reg, dato_tx_reg;
     reg rx_rq_reg;
     reg rx_st = 1'b0;
     reg tx_rq = 1'b0;
     reg tx_st_reg;
+    reg alarma = 1'b1;
+    reg [15:0] muestra = 16'd0;                   // El valor que va al DAC
+    reg dac_rq = 1'b0;
+    reg dac_st_reg;
+    reg samp_rate_ant = 1'b0;
+
     
     /***************************************************************************
      * assignments
      ***************************************************************************
      */
     assign clk = hwclk;
-    //assign leds = led_reg;
     assign rxf_245 = rxf_245_reg;
-    assign leds[4] = rx_rq_reg;
+    assign leds[7] = alarma;
+    assign pin_L23B = test1;
 
     /***************************************************************************
      * module instances
-     ***************************************************************************
-     */
+     ****************************************************************************/
+     
      temporizador temporizador(
         .clock_in   (clk),
         .reset_btn  (reset_btn),
         .medio_sg   (medio_sg),
         .rst_out    (reset_sgn),
+        .samp_rate  (samp_rate),
         .latido     (leds[0])
         );
         
@@ -86,12 +91,25 @@ module top_module (
 
         .tx_data    (dato_tx_reg),  // Dato a transmitir a la PC desde Mercurial
         .tx_rq      (tx_rq),        // Alto para indicar que hay un dato desde Mercurial a transmitir
-        .tx_st      (tx_st),        // Flanco positivo cuando el dato fue leído por este módulo
+        .tx_st      (tx_st)         // Flanco positivo cuando el dato fue leído por este módulo
         
-        .test1      (leds[2]),
-        .test2      (leds[3]),
-        .test3      (pin_L23B)
         );
+
+    dac_spi dac_spi(
+        .clock_in   (clk),
+        .reset      (reset_sgn),
+    
+        .dac_data   (muestra),      // Muestra a convertir
+        .dac_rq     (dac_rq),       // Alto para indicar que hay una muestra para convertir
+        .dac_st     (dac_st),       // Vale cero si el DAC está disponible para nueva conversión
+
+        .test1      (test1),
+        
+        .sdata      (sdata),
+        .bclk       (bclk),
+        .nsync      (nsync)         // SYNC del AD5061
+        
+    );
         
     /* always */
     /* Estados de la placa
@@ -104,19 +122,25 @@ module top_module (
     estado = 6 Envía "v"
     estado = 7 Envía "1"
     estado = 8 Envía "\n"
-    estado = 9 Detector sin WatchDog
-    estado = 10 Detector con WatchDog
+    estado = 9 Operativo sin WatchDog recibe byte bajo
+    estado = 10 Operativo sin WatchDog recibe byte alto
+    estado = 11 Operativo sin WatchDog espera samp_rate
+    estado = 12 Operativo sin WatchDog ordena conversión
+       
+    estado = 13 Detector con WatchDog
     */
     always @ (posedge clk) begin
         rx_rq_reg <= rx_rq;
         tx_st_reg <= tx_st;
+        dac_st_reg <= dac_st;
         // Si hubo reset vamos a estado = 0
         if (reset_sgn) begin
             //samp_rate_error <= 1'b0;
             rx_st <= 1'b0;
             tx_rq <= 1'b0;
-            leds[7] = 1'b0;
+            alarma <= 1'b1;
             estado <= 4'd0;
+            muestra_enviada <= 1'b0;
         end
         // Analisis para pasar a estado 1
         else if (estado == 4'd0 && rx_rq_reg && !rx_st) begin
@@ -153,6 +177,7 @@ module top_module (
         end
         // Si estoy en estado 3, envío "U" y voy a estado 4
         else if (estado == 4'd3 && !tx_st_reg && !tx_rq) begin
+            alarma <= 1'b0;
             dato_tx_reg <= 8'd85;
             tx_rq <= 1'b1;
         end
@@ -204,19 +229,46 @@ module top_module (
         else if (estado == 4'd8 && tx_st_reg && tx_rq) begin
             tx_rq <= 1'b0;
             estado = 4'd9;
-            leds[7] = 1'b1;
         end
-        // Estado 9 (Proximamente) Por ahora recibe y tira.
+
+        // Estado 9 entra operativo byte bajo
         else if (estado == 4'd9 && rx_rq_reg && !rx_st) begin
             dato_rx_reg <= dato_rx;
             rx_st <= 1'b1;
         end
         else if (estado == 4'd9 && !rx_rq_reg && rx_st) begin
             rx_st <= 1'b0;
-            leds[1] = ~leds[1];
-            // Analizar lo recibido
+            muestra[7:0] <= dato_rx_reg;
+            estado = 4'd10;
         end
         
+        // Estado 10 operativo byte alto
+        else if (estado == 4'd10 && rx_rq_reg && !rx_st) begin
+            dato_rx_reg <= dato_rx;
+            rx_st <= 1'b1;
+        end
+        else if (estado == 4'd10 && !rx_rq_reg && rx_st) begin
+            rx_st <= 1'b0;
+            muestra[15:8] <= dato_rx_reg;
+            estado = 4'd11;
+        end
+
+        // Estado 11 Detector de flanco ascendente de samp_rate
+        if (estado == 4'd11 && samp_rate && !samp_rate_ant) begin
+            estado = 4'd12;
+        end
+        
+        // Estado 12 operativo ordena conversión
+        else if (estado == 4'd12 && !dac_st_reg && !dac_rq) begin
+            dac_rq <= 1'b1;
+        end
+        else if (estado == 4'd12 && dac_st_reg && dac_rq) begin
+            dac_rq <= 1'b0;
+            estado = 4'd9;
+        end
+        
+        samp_rate_ant <= samp_rate; // Guardo el estado anterior de samp
+
     end
 
 endmodule
