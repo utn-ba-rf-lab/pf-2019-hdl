@@ -8,12 +8,12 @@ Cada vez que obtiene una muestra se la pasa al DAC.
 
 Significado de los leds
 0 - Prende y Apaga cada un segundo
-1 - Toggle cada vez que se recibe un dato [Próximamente]
-2 - Sin asignar
-3 - Sin asignar
-4 - Sin asignar
-5 - Sin asignar
-6 - Sin asignar
+1 - Toggle cada vez que se recibe un dato o parte de la animación
+2 - parte de la animación
+3 - parte de la animación
+4 - parte de la animación
+5 - parte de la animación
+6 - parte de la animación
 7 - Apaga si está en estado operativo (recibió "UTN", envió UTNv1 entró en régimen)
 */
 
@@ -51,16 +51,23 @@ module top_module (
     reg dac_rq = 1'b0;
     reg dac_st_reg;
     reg samp_rate_ant = 1'b0;
-
+    reg [5:0] animacion;
+    reg [11:0] WatchDog = 12'd4000;             // Desciende por cada muestra recibida
+    reg [11:0] Ctn_anim = 12'd4000;             // Desciende por cada muestra recibida y se recarga
+    reg medio_sg_ant = 1'b0;
+    reg [1:0] gracia = 2'd2;                    // Cantidad de segundos antes de WatchDog operativo
+    reg reset_sw = 1'b0;
     
     /***************************************************************************
      * assignments
      ***************************************************************************
      */
     assign clk = hwclk;
+    assign reset_sgn = (reset_hw | reset_sw);
     assign rxf_245 = rxf_245_reg;
     assign leds[7] = alarma;
-    assign pin_L23B = test1;
+    assign leds[6:1] = animacion[5:0];
+    assign pin_L23B = medio_sg;
 
     /***************************************************************************
      * module instances
@@ -70,7 +77,7 @@ module top_module (
         .clock_in   (clk),
         .reset_btn  (reset_btn),
         .medio_sg   (medio_sg),
-        .rst_out    (reset_sgn),
+        .rst_out    (reset_hw),
         .samp_rate  (samp_rate),
         .latido     (leds[0])
         );
@@ -103,8 +110,6 @@ module top_module (
         .dac_rq     (dac_rq),       // Alto para indicar que hay una muestra para convertir
         .dac_st     (dac_st),       // Vale cero si el DAC está disponible para nueva conversión
 
-        .test1      (test1),
-        
         .sdata      (sdata),
         .bclk       (bclk),
         .nsync      (nsync)         // SYNC del AD5061
@@ -122,12 +127,10 @@ module top_module (
     estado = 6 Envía "v"
     estado = 7 Envía "1"
     estado = 8 Envía "\n"
-    estado = 9 Operativo sin WatchDog recibe byte bajo
-    estado = 10 Operativo sin WatchDog recibe byte alto
-    estado = 11 Operativo sin WatchDog espera samp_rate
-    estado = 12 Operativo sin WatchDog ordena conversión
-       
-    estado = 13 Detector con WatchDog
+    estado = 9 Operativo recibe byte bajo
+    estado = 10 Operativo recibe byte alto
+    estado = 11 Operativo espera samp_rate
+    estado = 12 Operativo Ordena conversión, WatchDog, Animación
     */
     always @ (posedge clk) begin
         rx_rq_reg <= rx_rq;
@@ -135,12 +138,11 @@ module top_module (
         dac_st_reg <= dac_st;
         // Si hubo reset vamos a estado = 0
         if (reset_sgn) begin
-            //samp_rate_error <= 1'b0;
             rx_st <= 1'b0;
             tx_rq <= 1'b0;
             alarma <= 1'b1;
+            reset_sw <= 1'b0;
             estado <= 4'd0;
-            muestra_enviada <= 1'b0;
         end
         // Analisis para pasar a estado 1
         else if (estado == 4'd0 && rx_rq_reg && !rx_st) begin
@@ -149,7 +151,7 @@ module top_module (
         end
         else if (estado == 4'd0 && !rx_rq_reg && rx_st) begin
             rx_st <= 1'b0;
-            leds[1] = ~leds[1];
+            animacion[0] = ~animacion[0];
             // Si estoy en estado 0 y recibo "U", paso a estado 1
             estado = (dato_rx_reg == 8'd85) ? 4'd1 : 4'd0;
         end
@@ -160,7 +162,7 @@ module top_module (
         end
         else if (estado == 4'd1 && !rx_rq_reg && rx_st) begin
             rx_st <= 1'b0;
-            leds[1] = ~leds[1];
+            animacion[0] = ~animacion[0];
             // Si estoy en estado 1 y recibo "T" paso a estado 2, si no vuelvo a estado 0
             estado = (dato_rx_reg == 8'd84) ? 4'd2 : 4'd0;
         end
@@ -171,13 +173,12 @@ module top_module (
         end
         else if (estado == 4'd2 && !rx_rq_reg && rx_st) begin
             rx_st <= 1'b0;
-            leds[1] = ~leds[1];
+            animacion[0] = ~animacion[0];
             // Si estoy en estado 2 y recibo "N" paso a estado 3, si no vuelvo a estado 0
             estado = (dato_rx_reg == 8'd78) ? 4'd3 : 4'd0;
         end
         // Si estoy en estado 3, envío "U" y voy a estado 4
         else if (estado == 4'd3 && !tx_st_reg && !tx_rq) begin
-            alarma <= 1'b0;
             dato_tx_reg <= 8'd85;
             tx_rq <= 1'b1;
         end
@@ -228,6 +229,13 @@ module top_module (
         end
         else if (estado == 4'd8 && tx_st_reg && tx_rq) begin
             tx_rq <= 1'b0;
+            // preparo las variables operativas
+            alarma <= 1'b0;
+            gracia <= 2'd2;
+            WatchDog <= 12'd4000;
+            Ctn_anim <= 12'd4000;
+            animacion[5:0] <= 6'b1;
+            // Próximo estado
             estado = 4'd9;
         end
 
@@ -258,16 +266,43 @@ module top_module (
             estado = 4'd12;
         end
         
-        // Estado 12 operativo ordena conversión
+        // Estado 12 operativo ordena conversión, voy a estado 9
         else if (estado == 4'd12 && !dac_st_reg && !dac_rq) begin
             dac_rq <= 1'b1;
         end
         else if (estado == 4'd12 && dac_st_reg && dac_rq) begin
             dac_rq <= 1'b0;
+            // Código para el WatchDog
+            if (WatchDog != 12'd0) begin
+                WatchDog <= WatchDog - 1;
+            end
+            // Código para animación
+            Ctn_anim <= Ctn_anim - 1;
+            if (Ctn_anim == 12'd0) begin
+                animacion[5:0] <= (animacion[5]) ? 6'b1 : animacion[5:0] << 1;
+                Ctn_anim <= 12'd4000;
+            end
+            // Próximo estado
             estado = 4'd9;
         end
         
+        if (!medio_sg_ant && medio_sg && !alarma) begin
+            // Detecto flanco ascendente de medio_sg (sucede entonces cada un segundo)
+            if (gracia != 2'd0) begin
+                gracia <= gracia -1;
+            end
+            else begin
+                if (WatchDog == 12'd0) begin
+                    WatchDog <= 12'd4000;
+                end
+                else begin
+                    // Significa que no recibí muestras -> reset_sw
+                    reset_sw <= 1'b1;
+                end
+            end
+        end
         samp_rate_ant <= samp_rate; // Guardo el estado anterior de samp
+        medio_sg_ant <= medio_sg;   // Guardo el estado para detectar flanco ascendente
 
     end
 

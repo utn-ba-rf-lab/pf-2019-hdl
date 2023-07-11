@@ -6,8 +6,6 @@ module dac_spi(
     input   dac_rq,              // Alto para indicar que hay un dato desde Mercurial a transmitir
     output  dac_st,              // Flanco positivo cuando el dato fue leído por este módulo
     
-    output test1,
-    
     output sdata,
     output bclk,
     output nsync                 // SYNC del AD5061
@@ -36,7 +34,7 @@ module dac_spi(
     reg [23:0] sample_reg = 24'd0;              // Registro para enviar dato al DAC
     reg [WIDTH_COUNT_BCLK-1:0] counter_bclk;    // Contador de decimación para el clock del DAC
     reg [WIDTH_COUNT_BITS-1:0] counter_bits;    // Contador de bits enviados al DAC por muestra
-    //reg [15:0] muestra = 16'd0;                 // El valor que va al DAC
+    reg reset_reg;
     
     /***************************************************************************
      * assignments
@@ -45,7 +43,8 @@ module dac_spi(
 
     always @ (posedge clock_in) begin
         dac_rq_reg <= dac_rq;
-        if (reset) begin
+        reset_reg <= reset;
+        if (reset_reg) begin
             estado_dac <= ST_IDLE;
             dac_st <= 1'b0;
             sample_reg <= 24'd0;
@@ -61,7 +60,6 @@ module dac_spi(
                     counter_bits <= 0;
                     counter_bclk <= 0;
                     if (dac_rq_reg && !dac_st) begin
-                        test1 <= ~test1;
                         sample_reg[15:0] <= dac_data[15:0];
                         estado_dac <= ST_RUNNING;
                         dac_st <= 1'b1;
