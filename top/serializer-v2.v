@@ -295,16 +295,53 @@ module top_module (
                     estado = 5'd12;
                 end
                 
-                16'd14386: // "28" 12850="22"
+                16'd11025:
+                begin
+                    tiempo_sel <= 3'd1;
+                    estado = 5'd12;
+                end
+                
+                16'd16000:
+                begin
+                    tiempo_sel <= 3'd2;
+                    estado = 5'd12;
+                end
+                
+                16'd22050:
+                begin
+                    tiempo_sel <= 3'd3;
+                    estado = 5'd12;
+                end
+                
+                16'd24000:
+                begin
+                    tiempo_sel <= 3'd4;
+                    estado = 5'd12;
+                end
+                
+                16'd32000:
+                begin
+                    tiempo_sel <= 3'd5;
+                    estado = 5'd12;
+                end
+                
+                16'd44100:
+                begin
+                    tiempo_sel <= 3'd6;
+                    estado = 5'd12;
+                end
+
+                16'd48000:
                 begin
                     tiempo_sel <= 3'd7;
                     estado = 5'd12;
                 end
-                
+
                 16'd0:
                 begin
                     estado = 5'd12;         // Modo best efforts (tiempo_sel no importa)
                 end
+
                 default:
                 begin
                     estado = 5'd19;         // No encontré un samp_rate válido informo ERROR
