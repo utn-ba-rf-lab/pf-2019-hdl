@@ -1,6 +1,6 @@
-/* serializer.v V" realiza varias tareas.
+/* serializer.v V1 realiza varias tareas.
 1. Espera recibir "UTN"
-2. Luego envía "UTNv2\n"
+2. Luego envía "UTNv1\n"
 3. Espera dos bytes que le indican el samp_rate
 4. Luego envia "OK\n"
 5 Lee constantemente la FIFO caracteres desde la PC a la tasa samp_rate*2 caracteres por segundo, puesto que una muestra son dos caracteres, de esta forma Mercurial (PF-2019) impone a GNU Radio el ritmo de funcionamiento.
