@@ -71,6 +71,7 @@ module top_module (
     assign leds[7] = alarma;
     assign leds[6:1] = animacion[5:0];
     assign pin_L23B = tiempo;
+    assign pin_L4B = (estado == 5'd17);         // Pasa a alto si está esperando para convertir (Idle)
     assign tiempo = tiempos[tiempo_sel];
 
     /***************************************************************************
@@ -156,6 +157,7 @@ module top_module (
         if (reset_sgn) begin
             rx_st <= 1'b0;
             tx_rq <= 1'b0;
+            animacion[5:0] <= 6'b0;
             alarma <= 1'b1;
             reset_sw <= 1'b0;
             tiempo_sel <= 3'd0;
