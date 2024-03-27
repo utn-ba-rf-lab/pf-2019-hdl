@@ -1,7 +1,7 @@
 # TOP := top_level
-# TOP := blinky
+TOP := blinky
 # TOP := fifo_test
-TOP := top_module
+# TOP := top_module
 
 # default modulator
 MOD := am
@@ -18,7 +18,8 @@ SRC := $(wildcard ../modules/*.v)
 
 # SRC := $(wildcard ../top/fifo-test.v)
 # SRC := $(wildcard ../top/rx-8000.v)
-SRC += $(wildcard ../top/serializer-v2.v)
+# SRC += $(wildcard ../top/serializer-v2.v)
+SRC += $(wildcard ../top/blinky.v)
 INC := ../inc/
 BUILD = ../build
 

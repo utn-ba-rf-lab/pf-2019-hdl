@@ -59,7 +59,7 @@ module temporizador(
             medio_sg_reg <= ~medio_sg_reg;      // Pasó 0.5 Sg Toggle
             latido <= (medio_sg_reg) ? 1'b1 : 1'b0;
         end
-        latido <= ((medio_sg_reg == 1'b1) && (counter <= 26'd1200000)) ? 1'b1 : 1'b0;
+        latido <= ((medio_sg_reg == 1'b1) && (counter <= 26'd600000)) ? 1'b1 : 1'b0;
         
         // 48 KHz
         if (counter48K == 7'd0 && !rst_out_reg) begin

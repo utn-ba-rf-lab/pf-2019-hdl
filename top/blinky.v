@@ -6,9 +6,10 @@ module blinky(
     input rst,
     //input piEna,
     // Outputs
-    output [7:0]leds );
+    output nled_1,
+    output nled_2);
 
-    parameter c_bit_counter = 25;
+    parameter c_bit_counter = 21;
     reg  [c_bit_counter:0] s_counter_reg;
     wire [c_bit_counter:0] s_counter_next;
 
@@ -27,6 +28,7 @@ module blinky(
     assign s_counter_next = s_counter_reg + 1;
 
     // Output logic
-    assign leds[0] = (s_counter_reg >= {{1'b0}, {(c_bit_counter-1){1'b1}}} ) ? 1'b1 : 1'b0;
+    assign nled_1 = (s_counter_reg >= {{1'b0}, {(c_bit_counter-1){1'b1}}} ) ? 1'b1 : 1'b0;
+    assign nled_2 = ~nled_1;
 
 endmodule

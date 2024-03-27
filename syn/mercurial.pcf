@@ -34,6 +34,9 @@ set_io leds[4]          130
 set_io leds[5]          134
 set_io leds[6]          135
 set_io leds[7]          136
+# Agregados para probar blinky en P.2020
+set_io nled_1           78
+set_io nled_2           83
 
 
 ########################################
